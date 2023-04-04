@@ -1,4 +1,5 @@
 import pytube as pt
+from sys import exit
 
 class YoutubeDownloader:
     def __init__(self):
@@ -64,7 +65,7 @@ class YoutubeDownloader:
     
     def prompt_extension(self) -> str:
         '''Prompts the user for what extension they would like to use. Returns'''
-        print("What extension?\n1) mp4\n2) mp3\n3) m4a")
+        print("What extension?\n1) mp4\n2) webm\n3) 3gpp")
 
         while True:
             try:
@@ -78,9 +79,9 @@ class YoutubeDownloader:
                     case 1:
                         return "mp4"
                     case 2:
-                        return "mp3"
+                        return "webm"
                     case 3:
-                        return "m4a"
+                        return "3gpp"
                     case _:
                         print("ERROR: Please choose one of the options above.")
 
@@ -104,6 +105,7 @@ class YoutubeDownloader:
 
     def create_download_list(self, streams, maxAttempts=3):
         '''Returns a list of all possible YouTube downloads'''
+        count = 0
         for retry in range(maxAttempts):
             try:
                 options = {}
@@ -115,9 +117,10 @@ class YoutubeDownloader:
                         print(f"{i+1}) Type: {stream.type} - Extension: {stream.subtype} - Bitrate: {stream.abr} - Audio Codec: {stream.audio_codec}")
                     count = i
                 if count == 0:
-                    print("RESULTS: No files matching that filter. Please restart the program.")
+                    print("RESULTS: No downloads were found matching that filter.")
+                    break
             except:
-                print(f"ERROR: There was an error creating the downloads list. Retrying... (Attempt #{retry})")
+                print(f"ERROR: There was an error creating the downloads list. Retrying... (Attempt #{retry+1})")
             else:
                 return options
             
@@ -130,9 +133,9 @@ class YoutubeDownloader:
                 while chosen not in downloads.keys():
                     chosen = input(">> ")
                     if chosen not in downloads.keys():
-                        print(f"ERROR: No download found for #{chosen}. Please choose one of the options above.")
+                        print(f"ERROR: No download found for #{chosen}. Please restart the program.")
             except:
-                print("ERROR: There was an issue selecting the download. Please try again.")
+                print("ERROR: There was an issue selecting the download. Please restart the program.")
             else:
                 return self._youtube.streams.get_by_itag(downloads[chosen])
             
@@ -143,7 +146,6 @@ class YoutubeDownloader:
             if count > maxAttempts:
                 print("Cannot download file. Please try another download.")
                 self.try_download(self.select_download(self._downloads))
-
             try:
                 stream.download(output_path=self._output)
             except:
@@ -152,10 +154,21 @@ class YoutubeDownloader:
             else:
                 print("Finished downloading!")
                 break
-             
+    
+    def convert_to_timestamp(self, seconds):
+        '''Return a formatted timestamp of a given number of seconds.'''
+        from math import floor
+
+        minutes = floor(seconds/60)
+        remainingSeconds = seconds & 60
+        return f"{minutes}:{remainingSeconds}"
+
     def run(self):
         '''Starts the downloader and prompts.'''
         
+        # Show video selected
+        print(f"Video Selected: '{self._youtube.title}' by {self._youtube.author} ({self.convert_to_timestamp(self._youtube.length)})")
+
         try:
             # Prompts
             self._filtersEnabled = self.prompt_filters()
@@ -168,7 +181,8 @@ class YoutubeDownloader:
             self._downloads = self.create_download_list(self._streams)
 
             # Attempts to download
-            self.try_download(self.select_download(self._downloads))
+            if self._downloads != None:
+                self.try_download(self.select_download(self._downloads))
 
         except:
             print("ERROR: An unknown error has occurred in the process. Please restart the program and try again.")
